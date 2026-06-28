@@ -1751,16 +1751,12 @@ from .rf_inversion import (
     _sigma_to_progress,
 )
 
-NODE_CLASS_MAPPINGS = {
-    'RFInversion': RFInversion,
-    'UnofficialExtensions': UnofficialExtensions,
-    'UntwistingRoPE': UntwistingRoPE,
-}
-NODE_DISPLAY_NAME_MAPPINGS = {
-    'RFInversion': 'RF Inversion',
-    'UnofficialExtensions': 'Unofficial Extensions',
-    'UntwistingRoPE': 'Untwisting RoPE',
-}
+# The base BigStationW engine classes (RFInversion / UntwistingRoPE / UnofficialExtensions) stay
+# DEFINED and importable for internal use — the universal node composes them — but are NOT exposed
+# as standalone nodes: the universal + Advanced Options nodes supersede them, and not registering
+# them also avoids colliding with BigStationW's original pack if it's installed alongside.
+NODE_CLASS_MAPPINGS: dict = {}
+NODE_DISPLAY_NAME_MAPPINGS: dict = {}
 
 # ── DAIVID unified nodes (registered on top of the vendored BigStationW engine) ──
 # Imported last so the base classes above already exist when the node modules import them.
