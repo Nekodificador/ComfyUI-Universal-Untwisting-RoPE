@@ -195,7 +195,7 @@ class UntwistingRoPEUniversal:
         ov_low_start = ext.get('override_low_scale_start', None)
         beta_eff = float(ov_beta) if float(ov_beta) > 0.0 else float(prof['beta'])
         blocks_eff = ov_blocks.strip() if isinstance(ov_blocks, str) and ov_blocks.strip() else str(prof['blocks'])
-        adain_eff = float(ov_adain) if ov_adain is not None else float(prof['adain_strength'])
+        adain_eff = float(ov_adain) if (ov_adain is not None and float(ov_adain) >= 0.0) else float(prof['adain_strength'])
         # Schedule endpoints: present only when custom_schedule is on; else per-model default.
         high_end_eff = float(ov_high_end) if ov_high_end is not None else float(prof['high_scale_end'])
         low_start_eff = float(ov_low_start) if ov_low_start is not None else float(prof['low_scale_start'])

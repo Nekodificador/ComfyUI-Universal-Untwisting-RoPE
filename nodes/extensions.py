@@ -55,10 +55,10 @@ class UntwistingRoPEExtensions:
                                'technical, not 0-1. 0 = use the model default.'
                 }),
                 'tone_match': ('FLOAT', {
-                    'default': 0.0, 'min': 0.0, 'max': 1.0, 'step': 0.01,
+                    'default': -1.0, 'min': -1.0, 'max': 1.0, 'step': 0.01,
                     'tooltip': 'Match the reference\'s tone/contrast/color statistics (engine: '
-                               'adain_strength). 0 = off, 1 = full. The per-model default applies '
-                               'only when this Advanced node is NOT connected.'
+                               'adain_strength). -1 = keep the model default · 0 = off · 0–1 = custom. '
+                               'Left at -1 so connecting this node does not silently disable AdaIN.'
                 }),
                 'blocks': ('STRING', {
                     'default': '',
@@ -100,7 +100,7 @@ class UntwistingRoPEExtensions:
         bleeding_fix: float = 0.0,
         style_adherence: float = 0.0,
         looseness: float = 0.0,
-        tone_match: float = 0.0,
+        tone_match: float = -1.0,
         blocks: str = '',
         custom_schedule: bool = False,
         structure_end: float = 0.0,
