@@ -1,0 +1,15 @@
+[project]
+name = "comfyui-daivid-untwisting-rope"
+description = "Universal Untwisting RoPE — training-free style transfer for DiT models (image + LTX video), unified."
+version = "3.0.0"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/Nekodificador/ComfyUI-DAIVID-Untwisting-RoPE"
+
+[tool.comfy]
+# ponytail: PublisherId provisional — confirm (nekodificador vs David's) before first publish.
+PublisherId = "nekodificador"
+DisplayName = "DAIVID Untwisting RoPE"
