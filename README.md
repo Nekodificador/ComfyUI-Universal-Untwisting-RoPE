@@ -47,10 +47,6 @@ Clone into `ComfyUI/custom_nodes` and restart ComfyUI. No extra custom nodes req
   tested behavior but has not been run end-to-end here — **validate and tune on real LTX-Video**.
   Its params keep David's original names/mappings (`attenuation`/`semantic` as suppression), which
   differ from the image node's `structure`/`style` (direct scales) — reconcile if desired.
-- **LoRAAugmenter intentionally omitted.** David's FLUX.2 pack had a `LoRAAugmenter` (load LoRA +
-  pick a random image from a folder + apply RoPE). It mixes three concerns that ComfyUI already
-  covers separately; left out to avoid duplication. If wanted, the clean form is a minimal
-  "random image from folder" node chained with LoraLoader + the universal node.
 
 ## Credits
 
