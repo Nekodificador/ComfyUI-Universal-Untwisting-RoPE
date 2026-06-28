@@ -124,6 +124,12 @@ class UntwistingRoPEUniversal:
                     'tooltip': 'Pre-encoded reference conditioning. Overrides clip+prompt '
                                '(use to plug into Klein/Krea Tools pipelines).'
                 }),
+                'strength_curve': ('FLOAT', {
+                    'forceInput': True,
+                    'tooltip': 'Per-step strength multiplier (FLOAT list, e.g. from NKD Sigmas Curve). '
+                               'Scales the whole RoPE effect over the denoising trajectory; flat 1.0 = '
+                               'neutral. Multiplies, does not overwrite, structure/style.'
+                }),
                 'extensions': ('UNTWISTING_ROPE_EXTENSIONS', {
                     'tooltip': 'Advanced Options pack (the "Universal Untwisting RoPE (Advanced Options)" node): '
                                'fine-tuning knobs + core overrides (looseness, tone_match, blocks).'
@@ -143,6 +149,7 @@ class UntwistingRoPEUniversal:
         latent: Optional[Dict[str, Any]] = None,
         reference_latent: Optional[Dict[str, Any]] = None,
         ref_conditioning=None,
+        strength_curve=None,
         extensions: Optional[Dict[str, Any]] = None,
     ):
         verbose = True  # always on — debug info goes to console and the `info` output
@@ -219,8 +226,15 @@ class UntwistingRoPEUniversal:
             blocks=blocks_eff,
             verbose=verbose,
         )
-        if extensions is not None:
-            kwargs['unofficial_extensions'] = extensions
+        # Always pass an extensions dict so the recommended axis-0 default applies even WITHOUT the
+        # Advanced node connected: the engine defaults axis0 to 'default', which the engine docs warn
+        # is disastrous for non-Flux.1 models (e.g. Z-Image) — 'match_axes' is the recommended general
+        # default for good out-of-the-box results. The per-step strength curve lives on this node now.
+        unofficial = dict(ext)
+        unofficial.setdefault('axis0_rope_mode', 'match_axes')
+        if strength_curve is not None:
+            unofficial['strength_curve'] = strength_curve
+        kwargs['unofficial_extensions'] = unofficial
         result = UntwistingRoPE().patch(**kwargs)
         patched_model = result[0] if isinstance(result, tuple) else result
 
@@ -230,7 +244,7 @@ class UntwistingRoPEUniversal:
             ref_grid = f"{int(rs.shape[-2])}x{int(rs.shape[-1])}" if rs is not None else "?"
         except Exception:
             ref_grid = "?"
-        has_curve = isinstance(ext, dict) and ext.get('strength_curve') is not None
+        has_curve = strength_curve is not None
         info = (
             f"adapter={arch or '?'}  model_config={model_info.get('model_config_class', '?')}\n"
             f"structure(high) {float(structure):.3g}->{high_end_eff:.3g}  "

@@ -82,12 +82,6 @@ class UntwistingRoPEExtensions:
                                '(engine: low_scale_start). style is its end. '
                                'Only used when custom_schedule is on.'
                 }),
-                'strength_curve': ('FLOAT', {
-                    'forceInput': True,
-                    'tooltip': 'Per-step strength multiplier (FLOAT list, e.g. from NKD Sigmas Curve). '
-                               'Scales the whole RoPE effect over the trajectory; flat 1.0 = neutral. '
-                               'Multiplies, does not overwrite, the other knobs.'
-                }),
                 'axis0_rope_mode': (['default', 'match_axes', 'constant'], {
                     'default': 'match_axes',
                     'tooltip': 'Axis-0 RoPE behavior. match_axes is a good default.'
@@ -111,7 +105,6 @@ class UntwistingRoPEExtensions:
         custom_schedule: bool = False,
         structure_end: float = 0.0,
         style_start: float = 0.0,
-        strength_curve=None,
         axis0_rope_mode: str = 'match_axes',
         axis0_rope_scale: float = 1.0,
     ):
@@ -131,9 +124,6 @@ class UntwistingRoPEExtensions:
         if custom_schedule:
             data['override_high_scale_end'] = float(structure_end)
             data['override_low_scale_start'] = float(style_start)
-        # Per-step strength curve is read by the engine itself (in the wrapper).
-        if strength_curve is not None:
-            data['strength_curve'] = strength_curve
         return (data,)
 
 
