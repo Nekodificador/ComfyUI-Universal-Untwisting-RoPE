@@ -106,7 +106,7 @@ class UntwistingRoPEExtensions:
         bleeding_fix: float = 0.0,
         style_adherence: float = 0.0,
         looseness: float = 0.0,
-        tone_match: float = -1.0,
+        tone_match: float = 0.0,
         blocks: str = '',
         custom_schedule: bool = False,
         structure_end: float = 0.0,

@@ -11,8 +11,8 @@ Friendly controls:
   - structure -> high-frequency RoPE scale (how much the reference's shape/composition carries).
   - style     -> low-frequency RoPE scale at end of trajectory (global feel / palette).
 The remaining engine knobs (beta, scale endpoints, adain, blocks, RF solver) are hidden and
-filled per-model by a profile table. Raw control is still available via the `extensions` input
-and the original `Untwisting RoPE` / `RF Inversion` nodes, which stay registered for power users.
+filled per-model by a profile table. Raw control is available via the optional `extensions` input
+(the "Advanced Options" node). The base engine classes are not registered as standalone nodes.
 """
 from __future__ import annotations
 from typing import Any, Dict, Optional
@@ -186,7 +186,7 @@ class UntwistingRoPEUniversal:
         ov_adain = ext.get('override_adain_strength', None)
         ov_high_end = ext.get('override_high_scale_end', None)
         ov_low_start = ext.get('override_low_scale_start', None)
-        beta_eff = float(ov_beta) if ov_beta and float(ov_beta) > 0.0 else float(prof['beta'])
+        beta_eff = float(ov_beta) if float(ov_beta) > 0.0 else float(prof['beta'])
         blocks_eff = ov_blocks.strip() if isinstance(ov_blocks, str) and ov_blocks.strip() else str(prof['blocks'])
         adain_eff = float(ov_adain) if ov_adain is not None else float(prof['adain_strength'])
         # Schedule endpoints: present only when custom_schedule is on; else per-model default.
