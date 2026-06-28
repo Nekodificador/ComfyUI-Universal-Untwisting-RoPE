@@ -31,6 +31,7 @@ Paper: [Untwisting RoPE: Frequency Control for Shared Attention in DiTs](https:/
 | Z-Image / Z-Image Turbo | Universal | engine |
 | Anima | Universal | engine |
 | Flux.2 family (incl. FLUX.2 Klein) | Universal | engine + David |
+| Flux.1 family (Flux / Schnell / Inpaint; incl. **FLUX.1-Depth-dev**) | Universal | Nekodificador |
 | Qwen-Image / Edit family | Universal | engine |
 | KREA2 | Universal | David |
 | LTX-Video | LTX node | David |
