@@ -270,7 +270,7 @@ def _run_reference_pass(model_clone, dm, state, ref_cpu, c, input_x, sigma_for_r
 
 
 class UntwistingRoPELTX:
-    CATEGORY = 'DAIVID/RoPE'
+    CATEGORY = 'Universal Untwisting RoPE'
     RETURN_TYPES = ('MODEL',)
     RETURN_NAMES = ('model',)
     FUNCTION = 'patch'
@@ -413,5 +413,5 @@ NODE_CLASS_MAPPINGS = {
     'UntwistingRoPELTX': UntwistingRoPELTX,
 }
 NODE_DISPLAY_NAME_MAPPINGS = {
-    'UntwistingRoPELTX': 'Untwisting RoPE (LTX-Video)',
+    'UntwistingRoPELTX': 'Universal Untwisting RoPE (LTX-Video)',
 }

@@ -14,7 +14,7 @@ from .. import UnofficialExtensions
 
 
 class UntwistingRoPEExtensions:
-    CATEGORY = 'DAIVID/RoPE'
+    CATEGORY = 'Universal Untwisting RoPE'
     RETURN_TYPES = ('UNTWISTING_ROPE_EXTENSIONS',)
     RETURN_NAMES = ('extensions',)
     FUNCTION = 'build'
@@ -141,5 +141,5 @@ NODE_CLASS_MAPPINGS = {
     'UntwistingRoPEExtensions': UntwistingRoPEExtensions,
 }
 NODE_DISPLAY_NAME_MAPPINGS = {
-    'UntwistingRoPEExtensions': 'Untwisting RoPE (Advanced Options)',
+    'UntwistingRoPEExtensions': 'Universal Untwisting RoPE (Advanced Options)',
 }

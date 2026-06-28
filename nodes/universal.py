@@ -67,7 +67,7 @@ _PROFILES: Dict[str, Dict[str, Any]] = {
 
 
 class UntwistingRoPEUniversal:
-    CATEGORY = 'DAIVID/RoPE'
+    CATEGORY = 'Universal Untwisting RoPE'
     RETURN_TYPES = ('MODEL', 'CONDITIONING', 'CONDITIONING', 'LATENT', 'STRING')
     RETURN_NAMES = ('model', 'positive', 'negative', 'latent', 'info')
     FUNCTION = 'patch'
@@ -125,7 +125,7 @@ class UntwistingRoPEUniversal:
                                '(use to plug into Klein/Krea Tools pipelines).'
                 }),
                 'extensions': ('UNTWISTING_ROPE_EXTENSIONS', {
-                    'tooltip': 'Advanced Options pack (the "Untwisting RoPE (Advanced Options)" node): '
+                    'tooltip': 'Advanced Options pack (the "Universal Untwisting RoPE (Advanced Options)" node): '
                                'fine-tuning knobs + core overrides (looseness, tone_match, blocks).'
                 }),
             },
@@ -254,5 +254,5 @@ NODE_CLASS_MAPPINGS = {
     'UntwistingRoPEUniversal': UntwistingRoPEUniversal,
 }
 NODE_DISPLAY_NAME_MAPPINGS = {
-    'UntwistingRoPEUniversal': 'Untwisting RoPE (Universal)',
+    'UntwistingRoPEUniversal': 'Universal Untwisting RoPE',
 }
