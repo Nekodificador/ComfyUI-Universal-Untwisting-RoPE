@@ -28,11 +28,11 @@ class UntwistingRoPEExtensions:
         return {
             'required': {
                 'color_transfer': ('FLOAT', {
-                    'default': 0.0, 'min': 0.0, 'max': 1.0, 'step': 0.01,
+                    'default': 1.0, 'min': 0.0, 'max': 1.0, 'step': 0.01,
                     'tooltip': 'Match the result\'s color/tone to the reference (post-attention AdaIN).'
                 }),
                 'texture_transfer': ('FLOAT', {
-                    'default': 0.0, 'min': 0.0, 'max': 1.0, 'step': 0.01,
+                    'default': 1.0, 'min': 0.0, 'max': 1.0, 'step': 0.01,
                     'tooltip': 'Transfer the reference\'s texture (variance-gated V AdaIN).'
                 }),
                 'bleeding_fix': ('FLOAT', {
@@ -41,7 +41,7 @@ class UntwistingRoPEExtensions:
                                '(cosine-gated V) — reduces style bleeding into unrelated areas.'
                 }),
                 'style_adherence': ('FLOAT', {
-                    'default': 0.0, 'min': 0.0, 'max': 1.0, 'step': 0.01,
+                    'default': 0.35, 'min': 0.0, 'max': 1.0, 'step': 0.01,
                     'tooltip': 'Project target keys toward the reference key subspace — stronger '
                                'adherence to the reference (can rigidify; keep low).'
                 }),
@@ -55,10 +55,10 @@ class UntwistingRoPEExtensions:
                                'technical, not 0-1. 0 = use the model default.'
                 }),
                 'tone_match': ('FLOAT', {
-                    'default': -1.0, 'min': -1.0, 'max': 1.0, 'step': 0.01,
+                    'default': 1.0, 'min': -1.0, 'max': 1.0, 'step': 0.01,
                     'tooltip': 'Match the reference\'s tone/contrast/color statistics (engine: '
-                               'adain_strength). -1 = keep the model default · 0 = off · 0–1 = custom. '
-                               'Left at -1 so connecting this node does not silently disable AdaIN.'
+                               'adain_strength). Default 1.0 = full (validated). '
+                               '-1 = keep the per-model default · 0 = off · 0–1 = custom.'
                 }),
                 'blocks': ('STRING', {
                     'default': '',
@@ -95,12 +95,12 @@ class UntwistingRoPEExtensions:
 
     def build(
         self,
-        color_transfer: float = 0.0,
-        texture_transfer: float = 0.0,
+        color_transfer: float = 1.0,
+        texture_transfer: float = 1.0,
         bleeding_fix: float = 0.0,
-        style_adherence: float = 0.0,
+        style_adherence: float = 0.35,
         looseness: float = 0.0,
-        tone_match: float = -1.0,
+        tone_match: float = 1.0,
         blocks: str = '',
         custom_schedule: bool = False,
         structure_end: float = 0.0,
