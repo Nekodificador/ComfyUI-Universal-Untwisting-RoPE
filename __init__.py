@@ -1763,8 +1763,7 @@ NODE_DISPLAY_NAME_MAPPINGS: dict = {}
 def _merge_pack_nodes():
     from .nodes import universal as _universal
     from .nodes import extensions as _extensions
-    from .nodes import ltx as _ltx
-    for _mod in (_universal, _extensions, _ltx):
+    for _mod in (_universal, _extensions):
         NODE_CLASS_MAPPINGS.update(getattr(_mod, 'NODE_CLASS_MAPPINGS', {}))
         NODE_DISPLAY_NAME_MAPPINGS.update(getattr(_mod, 'NODE_DISPLAY_NAME_MAPPINGS', {}))
 

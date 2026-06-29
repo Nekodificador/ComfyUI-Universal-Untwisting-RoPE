@@ -127,9 +127,82 @@ class UntwistingRoPEExtensions:
         return (data,)
 
 
+class UntwistingRoPEAdvancedSettingsSimple:
+    """Minimal "Advanced Options" — David's preferred 4-slider layout.
+
+    Same backend keys as ``UntwistingRoPEExtensions`` but:
+      • Only the 4 artistic knobs are exposed (no core overrides, no
+        custom_schedule, no axis-0 RoPE controls).
+      • All defaults are 0.0 — start neutral and dial things in by hand,
+        instead of inheriting active engine defaults.
+      • ``bleeding_factor_fix`` and ``color_transfer`` allow slider values up
+        to 2 (the engine still clamps to [0, 1]; the wider slider gives David
+        the visual UX he prefers).
+      • ``advanced_mixer`` is a fine-grained 0-0.01 slider that maps to
+        upstream 0-1 via ×100 — designed for subtle key-subspace tuning.
+
+    Drop-in replacement for ``UntwistingRoPEExtensions`` for users who want a
+    minimalist surface.
+    """
+
+    CATEGORY     = 'Universal Untwisting RoPE'
+    RETURN_TYPES = ('UNTWISTING_ROPE_EXTENSIONS',)
+    RETURN_NAMES = ('extensions',)
+    FUNCTION     = 'build'
+    DESCRIPTION  = (
+        'Minimalist Advanced Options — 4 artistic sliders, all defaults at 0. '
+        'No core engine overrides. Same UNTWISTING_ROPE_EXTENSIONS output type, '
+        'plug-compatible with the universal node\'s "extensions" input.'
+    )
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            'required': {
+                'color_transfer': ('FLOAT', {
+                    'default': 0.0, 'min': 0.0, 'max': 2.0, 'step': 0.01,
+                    'display': 'slider',
+                }),
+                'bleeding_factor_fix': ('FLOAT', {
+                    'default': 0.0, 'min': 0.0, 'max': 2.0, 'step': 0.01,
+                    'display': 'slider',
+                }),
+                'texture_transfer': ('FLOAT', {
+                    'default': 0.0, 'min': 0.0, 'max': 1.0, 'step': 0.01,
+                    'display': 'slider',
+                }),
+                'advanced_mixer': ('FLOAT', {
+                    'default': 0.0, 'min': 0.0, 'max': 0.01, 'step': 0.0001,
+                    'display': 'slider',
+                }),
+            },
+        }
+
+    def build(self,
+              color_transfer:      float = 0.0,
+              bleeding_factor_fix: float = 0.0,
+              texture_transfer:    float = 0.0,
+              advanced_mixer:      float = 0.0):
+
+        # advanced_mixer: slider 0-0.01 → upstream key_subspace_alignment 0-1
+        internal_mixer = float(advanced_mixer) * 100.0
+
+        data = UnofficialExtensions().build(
+            post_attention_adain_strength = float(color_transfer),
+            variance_gated_v_adain        = float(texture_transfer),
+            cosine_gated_v_injection      = float(bleeding_factor_fix),
+            key_subspace_alignment        = internal_mixer,
+            axis0_rope_mode               = 'default',   # hidden hardcoded
+            axis0_rope_scale              = 0.0,         # hidden hardcoded
+        )[0]
+        return (data,)
+
+
 NODE_CLASS_MAPPINGS = {
-    'UntwistingRoPEExtensions': UntwistingRoPEExtensions,
+    'UntwistingRoPEExtensions':                 UntwistingRoPEExtensions,
+    'UntwistingRoPEAdvancedSettingsSimple':     UntwistingRoPEAdvancedSettingsSimple,
 }
 NODE_DISPLAY_NAME_MAPPINGS = {
-    'UntwistingRoPEExtensions': 'Universal Untwisting RoPE (Advanced Options)',
+    'UntwistingRoPEExtensions':                 'Universal Untwisting RoPE (Advanced Options)',
+    'UntwistingRoPEAdvancedSettingsSimple':     'Universal Untwisting RoPE (Advanced Settings — Simple)',
 }
