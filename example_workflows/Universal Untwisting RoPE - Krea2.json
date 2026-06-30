@@ -925,7 +925,10 @@
       "widgets_values": [
         "Darth Vader, medium shot, cinematic",
         1.5,
-        2
+        0,
+        0,
+        2,
+        "linear"
       ]
     },
     {

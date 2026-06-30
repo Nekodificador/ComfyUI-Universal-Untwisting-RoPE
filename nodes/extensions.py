@@ -65,23 +65,8 @@ class UntwistingRoPEExtensions:
                     'tooltip': 'Block ranges to patch, e.g. "7-27" or "0-8,28-37". '
                                'Empty = use the model default.'
                 }),
-                # ── Schedule endpoints. Off = model defaults; on = use the two values below. ──
-                'custom_schedule': ('BOOLEAN', {
-                    'default': False,
-                    'tooltip': 'Use custom schedule endpoints below. Off = per-model defaults.'
-                }),
-                'structure_end': ('FLOAT', {
-                    'default': 0.0, 'min': -4.0, 'max': 8.0, 'step': 0.01,
-                    'tooltip': 'Where structure (high-freq) ends up by the end of denoising '
-                               '(engine: high_scale_end). structure is its start. '
-                               'Only used when custom_schedule is on.'
-                }),
-                'style_start': ('FLOAT', {
-                    'default': 0.0, 'min': -4.0, 'max': 8.0, 'step': 0.01,
-                    'tooltip': 'Where style (low-freq) starts at the beginning of denoising '
-                               '(engine: low_scale_start). style is its end. '
-                               'Only used when custom_schedule is on.'
-                }),
+                # Schedule endpoints (structure_start/end, style_start/end) and the schedule_curve
+                # preset now live on the main node — they gave better results exposed directly.
                 'axis0_rope_mode': (['default', 'match_axes', 'constant'], {
                     'default': 'match_axes',
                     'tooltip': 'Axis-0 RoPE behavior. match_axes is a good default.'
@@ -102,9 +87,6 @@ class UntwistingRoPEExtensions:
         looseness: float = 0.0,
         tone_match: float = 1.0,
         blocks: str = '',
-        custom_schedule: bool = False,
-        structure_end: float = 0.0,
-        style_start: float = 0.0,
         axis0_rope_mode: str = 'match_axes',
         axis0_rope_scale: float = 1.0,
     ):
@@ -120,10 +102,6 @@ class UntwistingRoPEExtensions:
         data['override_beta'] = float(looseness)
         data['override_adain_strength'] = float(tone_match)
         data['override_blocks'] = str(blocks)
-        # Schedule endpoints only override when explicitly enabled — no magic sentinel value.
-        if custom_schedule:
-            data['override_high_scale_end'] = float(structure_end)
-            data['override_low_scale_start'] = float(style_start)
         return (data,)
 
 

@@ -187,6 +187,28 @@ def _triangle_ramp01(progress: Any) -> float:
     p = _coerce_strength01(progress)
     return max(0.0, min(1.0, 1.0 - abs((2.0 * p) - 1.0)))
 
+SCHEDULE_CURVES = ('linear', 'ease_in', 'ease_out', 'ease_in_out', 'smoothstep', 'exponential')
+
+def _ease_schedule_progress(curve: Any, progress: float) -> float:
+    """Warp trajectory progress (0..1) for the high/low scale schedule.
+
+    'linear' returns progress unchanged (identical to the un-eased schedule). The rest reshape
+    *when* structure/style ramp between their start and end values — not how strong they are.
+    """
+    p = max(0.0, min(1.0, float(progress)))
+    name = str(curve or 'linear').strip().lower()
+    if name == 'ease_in':       # slow start, fast finish (quadratic)
+        return p * p
+    if name == 'ease_out':      # fast start, slow finish
+        return 1.0 - (1.0 - p) ** 2
+    if name == 'ease_in_out':   # slow-fast-slow (symmetric S)
+        return 2.0 * p * p if p < 0.5 else 1.0 - ((-2.0 * p + 2.0) ** 2) / 2.0
+    if name == 'smoothstep':    # gentler S (Hermite)
+        return p * p * (3.0 - 2.0 * p)
+    if name == 'exponential':   # almost flat then sharp at the end
+        return 0.0 if p <= 0.0 else 2.0 ** (10.0 * p - 10.0)
+    return p  # linear / unknown
+
 def _repeat_conditioning_tree(obj: Any, src: int, tgt: int) -> Any:
     if torch.is_tensor(obj):
         try:
@@ -1431,6 +1453,8 @@ class UntwistingRoPE:
         # Optional per-step strength curve (FLOAT list, e.g. from NKD Sigmas Curve). Multiplies the
         # RoPE scale each step: effective = curve(progress) * lerp(start, end, progress). None = off.
         strength_curve = ext_cfg.get('strength_curve', None)
+        # Schedule easing preset: warps WHEN the high/low scales ramp start→end. 'linear' = unchanged.
+        schedule_curve = str(ext_cfg.get('schedule_curve', 'linear'))
 
         if rf_active:
             stats.rf_sigma_cache = rf_state.get('cache', {}) if isinstance(rf_state.get('cache', {}), dict) else {}
@@ -1566,6 +1590,18 @@ class UntwistingRoPE:
                     'default_runtime_cfg.'
                 )
             cfg.update(default_cfg(dm))
+
+            # Schedule easing: warp progress for the high/low scale ramp ONLY (not the triangle-ramp
+            # fine-tuning effects, which keep raw progress). cfg is rebuilt each step, so pre-baking the
+            # eased scale into BOTH endpoints makes the adapter's linear lerp return it unchanged — one
+            # central point, zero per-adapter edits. 'linear' => eased == progress => byte-identical.
+            if schedule_curve.strip().lower() != 'linear':
+                e = _ease_schedule_progress(schedule_curve, progress)
+                hs = _lerp(cfg['high_scale_start'], cfg['high_scale_end'], e)
+                ls = _lerp(cfg['low_scale_start'], cfg['low_scale_end'], e)
+                cfg['high_scale_start'] = cfg['high_scale_end'] = hs
+                cfg['low_scale_start'] = cfg['low_scale_end'] = ls
+                cfg['_schedule_curve'] = schedule_curve
 
             # Optional per-step strength curve: scales all four RoPE endpoints by curve(progress).
             # Because the same factor hits both endpoints, the adapter's lerp factors it out cleanly:
@@ -1769,7 +1805,3 @@ def _merge_pack_nodes():
         NODE_DISPLAY_NAME_MAPPINGS.update(getattr(_mod, 'NODE_DISPLAY_NAME_MAPPINGS', {}))
 
 _merge_pack_nodes()
-
-# Serve the js/ extension (conditional widget visibility). Works in both the classic
-# canvas renderer (1.0) and the Vue Nodes renderer (2.0).
-WEB_DIRECTORY = "./js"

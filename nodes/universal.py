@@ -8,18 +8,19 @@ Design: this composes the engine's `RFInversion` + `UntwistingRoPE` nodes — ex
 pattern David's KREA2 wrapper proved — generalized across models and made self-contained.
 
 Friendly controls:
-  - structure -> high-frequency RoPE scale (how much the reference's shape/composition carries).
-  - style     -> low-frequency RoPE scale at end of trajectory (global feel / palette).
-The remaining engine knobs (beta, scale endpoints, adain, blocks, RF solver) are hidden and
-filled per-model by a profile table. Raw control is available via the optional `extensions` input
-(the "Advanced Options" node). The base engine classes are not registered as standalone nodes.
+  - structure_start/end -> high-frequency RoPE scale (reference shape/composition), start->end of denoise.
+  - style_start/end     -> low-frequency RoPE scale (global feel / palette), start->end of denoise.
+  - schedule_curve      -> easing preset shaping HOW structure/style ramp between start and end.
+The remaining engine knobs (beta, adain, blocks, RF solver) are hidden and filled per-model by a
+profile table. Raw control is available via the optional `extensions` input (the "Advanced Options"
+node). The base engine classes are not registered as standalone nodes.
 """
 from __future__ import annotations
 from typing import Any, Dict, Optional
 
 import torch
 
-from .. import RFInversion, UntwistingRoPE
+from .. import RFInversion, UntwistingRoPE, SCHEDULE_CURVES
 from .. import models as model_adapters
 from ..image_helpers import encode_reference_to_latent, match_latent_grid
 
@@ -50,7 +51,7 @@ def _zero_out(conditioning):
 # ponytail: these are TUNING CONSTANTS, not law. krea2 reproduces David's known-good wrapper;
 # the rest start from the engine defaults. Tweak per model as real outputs dictate.
 _DEFAULT_PROFILE: Dict[str, Any] = dict(
-    beta=50.0, high_scale_end=0.0, low_scale_start=1.0, adain_strength=0.5,
+    beta=50.0, adain_strength=0.5,
     blocks='0-999', rf_mode='rf_gamma', gamma=0.5, pmi_alpha=0.0,
     otip_strength=0.35, otip_clip_norm=20.0,
 )
@@ -58,7 +59,7 @@ _DEFAULT_PROFILE: Dict[str, Any] = dict(
 _PROFILES: Dict[str, Dict[str, Any]] = {
     # David's KREA2 wrapper values (flowturbo_pc solver, tuned scales/blocks for KREA2).
     'krea2': dict(
-        beta=0.99, high_scale_end=0.0, low_scale_start=0.0, adain_strength=0.85,
+        beta=0.99, adain_strength=0.85,
         blocks='7-27', rf_mode='flowturbo_pc', gamma=0.0, pmi_alpha=0.0,
         otip_strength=0.0, otip_clip_norm=20.0,
     ),
@@ -90,15 +91,32 @@ class UntwistingRoPEUniversal:
                                '(no separate CLIP Text Encode node needed). Often the reference\'s '
                                'own description, or left empty.'
                 }),
-                'structure': ('FLOAT', {
+                'structure_start': ('FLOAT', {
                     'default': 1.0, 'min': -4.0, 'max': 8.0, 'step': 0.01,
-                    'tooltip': 'High-frequency scale = structure. Higher pulls more of the '
-                               'reference\'s shape/composition into the result.'
+                    'tooltip': 'High-frequency scale (structure) at the START of denoising. Higher '
+                               'pulls more of the reference\'s shape/composition into the result.'
                 }),
-                'style': ('FLOAT', {
+                'structure_end': ('FLOAT', {
+                    'default': 0.0, 'min': -4.0, 'max': 8.0, 'step': 0.01,
+                    'tooltip': 'Structure (high-freq) at the END of denoising. Ramps from '
+                               'structure_start to here along the trajectory (shaped by schedule_curve).'
+                }),
+                'style_start': ('FLOAT', {
+                    'default': 1.0, 'min': -4.0, 'max': 8.0, 'step': 0.01,
+                    'tooltip': 'Low-frequency scale (style) at the START of denoising. Ramps to '
+                               'style_end along the trajectory (shaped by schedule_curve).'
+                }),
+                'style_end': ('FLOAT', {
                     'default': 3.0, 'min': -4.0, 'max': 8.0, 'step': 0.01,
-                    'tooltip': 'Low-frequency scale = style. Higher pulls more of the '
-                               'reference\'s global feel/palette by the end of denoising.'
+                    'tooltip': 'Style (low-freq) at the END of denoising. Higher pulls more of the '
+                               'reference\'s global feel/palette by the end.'
+                }),
+                'schedule_curve': (list(SCHEDULE_CURVES), {
+                    'default': 'linear',
+                    'tooltip': 'How structure/style ramp from start to end over the trajectory. '
+                               'linear = constant rate (original behavior). ease_in = slow then fast, '
+                               'ease_out = fast then slow, ease_in_out/smoothstep = S-curve, '
+                               'exponential = almost flat then sharp at the end.'
                 }),
             },
             'optional': {
@@ -141,8 +159,11 @@ class UntwistingRoPEUniversal:
         self,
         model,
         prompt: str,
-        structure: float,
-        style: float,
+        structure_start: float,
+        structure_end: float,
+        style_start: float,
+        style_end: float,
+        schedule_curve: str = 'linear',
         clip=None,
         reference_image=None,
         vae=None,
@@ -191,14 +212,9 @@ class UntwistingRoPEUniversal:
         ov_beta = ext.get('override_beta', 0.0)
         ov_blocks = ext.get('override_blocks', '')
         ov_adain = ext.get('override_adain_strength', None)
-        ov_high_end = ext.get('override_high_scale_end', None)
-        ov_low_start = ext.get('override_low_scale_start', None)
         beta_eff = float(ov_beta) if float(ov_beta) > 0.0 else float(prof['beta'])
         blocks_eff = ov_blocks.strip() if isinstance(ov_blocks, str) and ov_blocks.strip() else str(prof['blocks'])
         adain_eff = float(ov_adain) if (ov_adain is not None and float(ov_adain) >= 0.0) else float(prof['adain_strength'])
-        # Schedule endpoints: present only when custom_schedule is on; else per-model default.
-        high_end_eff = float(ov_high_end) if ov_high_end is not None else float(prof['high_scale_end'])
-        low_start_eff = float(ov_low_start) if ov_low_start is not None else float(prof['low_scale_start'])
 
         # ── Step 1: build the RF inversion trajectory latent ─────────────────────
         model_rf, rf_latent = RFInversion().build(
@@ -218,10 +234,10 @@ class UntwistingRoPEUniversal:
             model=model_rf,
             rf_inversion=rf_latent,
             beta=beta_eff,
-            high_scale_start=float(structure),
-            high_scale_end=high_end_eff,
-            low_scale_start=low_start_eff,
-            low_scale_end=float(style),
+            high_scale_start=float(structure_start),
+            high_scale_end=float(structure_end),
+            low_scale_start=float(style_start),
+            low_scale_end=float(style_end),
             adain_strength=adain_eff,
             blocks=blocks_eff,
             verbose=verbose,
@@ -234,6 +250,7 @@ class UntwistingRoPEUniversal:
         unofficial.setdefault('axis0_rope_mode', 'match_axes')
         if strength_curve is not None:
             unofficial['strength_curve'] = strength_curve
+        unofficial['schedule_curve'] = schedule_curve
         kwargs['unofficial_extensions'] = unofficial
         result = UntwistingRoPE().patch(**kwargs)
         patched_model = result[0] if isinstance(result, tuple) else result
@@ -247,8 +264,8 @@ class UntwistingRoPEUniversal:
         has_curve = strength_curve is not None
         info = (
             f"adapter={arch or '?'}  model_config={model_info.get('model_config_class', '?')}\n"
-            f"structure(high) {float(structure):.3g}->{high_end_eff:.3g}  "
-            f"style(low) {low_start_eff:.3g}->{float(style):.3g}\n"
+            f"structure(high) {float(structure_start):.3g}->{float(structure_end):.3g}  "
+            f"style(low) {float(style_start):.3g}->{float(style_end):.3g}  curve={schedule_curve}\n"
             f"looseness(beta)={beta_eff:.3g}  blocks={blocks_eff}  tone_match(adain)={adain_eff:.3g}\n"
             f"rf_mode={prof['rf_mode']}  ref_grid={ref_grid}  "
             f"extensions={'yes' if extensions is not None else 'no'}  "
