@@ -150,7 +150,14 @@ def _install_imglen_probe(dm: Any) -> None:
     patch = int(getattr(dm, "patch", 2))
     orig_forward = dm._forward
 
-    def probed_forward(self, x, timesteps, context, attention_mask=None, transformer_options={}, **kwargs):
+    # ponytail: signature-agnostic on purpose — only `x` and transformer_options are ours to read.
+    # ComfyUI keeps adding positional params to Krea2's _forward (ref_latents landed in c9602625);
+    # pinning the full signature here means every upstream change breaks the probe.
+    def probed_forward(self, x, *args, **kwargs):
+        transformer_options = kwargs.get('transformer_options')
+        if transformer_options is None:
+            # it is always the last positional arg; the others are tensors/lists/None
+            transformer_options = next((a for a in reversed(args) if isinstance(a, dict)), None)
         cfg = transformer_options.get(CONFIG_KEY) if isinstance(transformer_options, dict) else None
         if cfg and cfg.get("enabled"):
             try:
@@ -163,7 +170,7 @@ def _install_imglen_probe(dm: Any) -> None:
                 cfg["krea2_imglen"] = (H // patch) * (W // patch)
             except Exception:
                 cfg.pop("krea2_imglen", None)
-        return orig_forward(x, timesteps, context, attention_mask, transformer_options=transformer_options, **kwargs)
+        return orig_forward(x, *args, **kwargs)
 
     dm._forward = types.MethodType(probed_forward, dm)
     dm._untwist_krea2_forward_probe = True
