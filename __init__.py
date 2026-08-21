@@ -1791,6 +1791,9 @@ from .rf_inversion import (
 # DEFINED and importable for internal use — the universal node composes them — but are NOT exposed
 # as standalone nodes: the universal + Advanced Options nodes supersede them, and not registering
 # them also avoids colliding with BigStationW's original pack if it's installed alongside.
+# Frontend extensions (schedule preview chart on the universal node).
+WEB_DIRECTORY = "./js"
+
 NODE_CLASS_MAPPINGS: dict = {}
 NODE_DISPLAY_NAME_MAPPINGS: dict = {}
 
