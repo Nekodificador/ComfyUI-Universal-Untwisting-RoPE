@@ -187,7 +187,8 @@ def _triangle_ramp01(progress: Any) -> float:
     p = _coerce_strength01(progress)
     return max(0.0, min(1.0, 1.0 - abs((2.0 * p) - 1.0)))
 
-SCHEDULE_CURVES = ('linear', 'ease_in', 'ease_out', 'ease_in_out', 'smoothstep', 'exponential')
+SCHEDULE_CURVES = ('linear', 'ease_in', 'ease_out', 'ease_in_out', 'smoothstep',
+                   'exponential', 'logarithmic')
 
 def _ease_schedule_progress(curve: Any, progress: float) -> float:
     """Warp trajectory progress (0..1) for the high/low scale schedule.
@@ -207,6 +208,8 @@ def _ease_schedule_progress(curve: Any, progress: float) -> float:
         return p * p * (3.0 - 2.0 * p)
     if name == 'exponential':   # almost flat then sharp at the end
         return 0.0 if p <= 0.0 else 2.0 ** (10.0 * p - 10.0)
+    if name == 'logarithmic':   # mirror of exponential: sharp at the start, then almost flat
+        return 1.0 if p >= 1.0 else 1.0 - 2.0 ** (-10.0 * p)
     return p  # linear / unknown
 
 def _repeat_conditioning_tree(obj: Any, src: int, tgt: int) -> Any:

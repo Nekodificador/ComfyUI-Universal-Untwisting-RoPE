@@ -132,7 +132,8 @@ class UntwistingRoPEUniversal:
                     'tooltip': 'How structure/style ramp from start to end over the trajectory. '
                                'linear = constant rate (original behavior). ease_in = slow then fast, '
                                'ease_out = fast then slow, ease_in_out/smoothstep = S-curve, '
-                               'exponential = almost flat then sharp at the end.'
+                               'exponential = almost flat then sharp at the end, '
+                               'logarithmic = the mirror: all the change up front, then flat.'
                 }),
             },
             # Slot order mirrors the output column of presampling nodes (model / positive /

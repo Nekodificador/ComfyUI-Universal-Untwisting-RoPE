@@ -14,7 +14,17 @@ import sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 GRID = [i / 40 for i in range(41)]
-CURVES = ["linear", "ease_in", "ease_out", "ease_in_out", "smoothstep", "exponential", "bogus"]
+
+
+def schedule_curves():
+    """Read the real list, so adding a curve without teaching the preview about it fails here."""
+    src = open(os.path.join(ROOT, "__init__.py"), encoding="utf-8").read()
+    m = re.search(r"^SCHEDULE_CURVES = \((.*?)\)", src, re.S | re.M)
+    assert m, "could not find SCHEDULE_CURVES in __init__.py"
+    return re.findall(r"'([a-z_]+)'", m.group(1))
+
+
+CURVES = schedule_curves() + ["bogus"]
 
 
 def python_ease():

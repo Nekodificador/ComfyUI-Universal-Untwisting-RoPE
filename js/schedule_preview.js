@@ -45,6 +45,8 @@ function ease(curve, p) {
       return p * p * (3 - 2 * p);
     case "exponential":
       return p <= 0 ? 0 : 2 ** (10 * p - 10);
+    case "logarithmic":
+      return p >= 1 ? 1 : 1 - 2 ** (-10 * p);
     default:
       return p;
   }
