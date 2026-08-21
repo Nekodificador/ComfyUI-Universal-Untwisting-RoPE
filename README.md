@@ -18,8 +18,11 @@ Paper: [Untwisting RoPE: Frequency Control for Shared Attention in DiTs](https:/
   adapter (no more one-node-per-model).
 - **Self-contained reference handling.** The node resizes the reference to the target resolution
   and VAE-encodes it internally — no more auxiliary Scale-Image / VAEEncode / ReferenceLatent
-  nodes cluttering the graph. You can still pass a pre-encoded `reference_latent` (e.g. from NKD
-  Klein/Krea Tools) to avoid double-encoding.
+  nodes cluttering the graph.
+- **Presampling-shaped slots.** The input column mirrors a presampling node's output column
+  (`model` / `positive` / `negative` / `latent` / `reference_image` / `vae`), and `negative` +
+  `vae` pass straight through, so an NKD Klein/Krea Tools chain wires as short parallel cables
+  instead of cables flying over the node.
 - **Friendly controls** (`attenuation` / `semantic`) with per-model defaults; raw parameters
   available via an optional extensions node.
 - **LTX consolidated** — the three LTX variants merged into one node with a mode selector.

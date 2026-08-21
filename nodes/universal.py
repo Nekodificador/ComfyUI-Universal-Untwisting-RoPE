@@ -22,16 +22,7 @@ import torch
 
 from .. import RFInversion, UntwistingRoPE, SCHEDULE_CURVES
 from .. import models as model_adapters
-from ..image_helpers import encode_reference_to_latent, match_latent_grid
-
-
-def _encode_text(clip, text: str):
-    """Inline CLIP Text Encode (same as ComfyUI's CLIPTextEncode) so the reference prompt
-    is handled inside the node instead of needing a separate encode node."""
-    if clip is None:
-        raise RuntimeError("UntwistingRoPEUniversal: clip is None — cannot encode the prompt.")
-    tokens = clip.tokenize(text or "")
-    return clip.encode_from_tokens_scheduled(tokens)
+from ..image_helpers import encode_reference_to_latent
 
 
 def _zero_out(conditioning):
@@ -69,14 +60,15 @@ _PROFILES: Dict[str, Dict[str, Any]] = {
 
 class UntwistingRoPEUniversal:
     CATEGORY = 'Universal Untwisting RoPE'
-    RETURN_TYPES = ('MODEL', 'CONDITIONING', 'CONDITIONING', 'LATENT', 'STRING')
-    RETURN_NAMES = ('model', 'positive', 'negative', 'latent', 'info')
+    RETURN_TYPES = ('MODEL', 'CONDITIONING', 'CONDITIONING', 'LATENT', 'VAE', 'STRING')
+    RETURN_NAMES = ('model', 'positive', 'negative', 'latent', 'vae', 'info')
     FUNCTION = 'patch'
     DESCRIPTION = (
         'Universal training-free style transfer via Untwisting RoPE. Auto-detects the model '
         '(Flux.2/Klein, KREA2, Qwen-Image, Z-Image, Anima), runs RF inversion + the RoPE patch '
-        'internally, encodes the prompt and resizes/encodes the reference for you. Presampling-style: '
-        'outputs model + positive/negative conditioning + the passed-through latent, so it feeds the '
+        'internally, and resizes + VAE-encodes the reference for you. Presampling-style: '
+        'its slots mirror a presampling node output column (model/positive/negative/latent/image/vae), '
+        'so the chain wires as short parallel cables; negative and vae pass straight through to the '
         'sampler directly. (Per the docs, the reference conditioning IS the target prompt — encoded once.)'
     )
 
@@ -85,31 +77,55 @@ class UntwistingRoPEUniversal:
         return {
             'required': {
                 'model': ('MODEL',),
-                'prompt': ('STRING', {
-                    'multiline': True, 'dynamicPrompts': True, 'default': '',
-                    'tooltip': 'Reference prompt. Encoded internally with the connected clip '
-                               '(no separate CLIP Text Encode node needed). Often the reference\'s '
-                               'own description, or left empty.'
+                'positive': ('CONDITIONING', {
+                    'tooltip': 'Target conditioning — this IS the reference conditioning '
+                               '(per the docs). Feed it the "positive" output of a presampling '
+                               'node (NKD Klein/Krea Tools), or a plain CLIP Text Encode.'
+                }),
+                'latent': ('LATENT', {
+                    'tooltip': 'The generation/empty latent. The reference is matched to its EXACT '
+                               'grid (required so RF inversion does not error), and it is passed '
+                               'through to the "latent" output — wire that straight to the sampler.'
+                }),
+                'reference_image': ('IMAGE', {
+                    'tooltip': 'The reference the style/structure is taken from. Resized to the '
+                               'generation latent grid and VAE-encoded internally.'
+                }),
+                'vae': ('VAE', {
+                    'tooltip': 'Encodes the reference. Also passed through to the "vae" output '
+                               'so the decode after the sampler can take it from here.'
                 }),
                 'structure_start': ('FLOAT', {
                     'default': 1.0, 'min': -4.0, 'max': 8.0, 'step': 0.01,
                     'tooltip': 'High-frequency scale (structure) at the START of denoising. Higher '
                                'pulls more of the reference\'s shape/composition into the result.'
+                               ' 0 = the reference contributes nothing in that band (off); '
+                               'negatives INVERT the reference attention (anti-reference), '
+                               'they do not reduce it further.'
                 }),
                 'structure_end': ('FLOAT', {
                     'default': 0.0, 'min': -4.0, 'max': 8.0, 'step': 0.01,
                     'tooltip': 'Structure (high-freq) at the END of denoising. Ramps from '
                                'structure_start to here along the trajectory (shaped by schedule_curve).'
+                               ' 0 = the reference contributes nothing in that band (off); '
+                               'negatives INVERT the reference attention (anti-reference), '
+                               'they do not reduce it further.'
                 }),
                 'style_start': ('FLOAT', {
                     'default': 1.0, 'min': -4.0, 'max': 8.0, 'step': 0.01,
                     'tooltip': 'Low-frequency scale (style) at the START of denoising. Ramps to '
                                'style_end along the trajectory (shaped by schedule_curve).'
+                               ' 0 = the reference contributes nothing in that band (off); '
+                               'negatives INVERT the reference attention (anti-reference), '
+                               'they do not reduce it further.'
                 }),
                 'style_end': ('FLOAT', {
                     'default': 3.0, 'min': -4.0, 'max': 8.0, 'step': 0.01,
                     'tooltip': 'Style (low-freq) at the END of denoising. Higher pulls more of the '
                                'reference\'s global feel/palette by the end.'
+                               ' 0 = the reference contributes nothing in that band (off); '
+                               'negatives INVERT the reference attention (anti-reference), '
+                               'they do not reduce it further.'
                 }),
                 'schedule_curve': (list(SCHEDULE_CURVES), {
                     'default': 'linear',
@@ -119,28 +135,13 @@ class UntwistingRoPEUniversal:
                                'exponential = almost flat then sharp at the end.'
                 }),
             },
+            # Slot order mirrors the output column of presampling nodes (model / positive /
+            # negative / latent / image / vae) so the whole chain wires as short parallel cables.
             'optional': {
-                'clip': ('CLIP', {
-                    'tooltip': 'CLIP/text-encoder used to encode the prompt internally. '
-                               'Not needed if you connect ref_conditioning directly.'
-                }),
-                'reference_image': ('IMAGE', {
-                    'tooltip': 'Raw reference. Resized to the generation latent\'s grid and '
-                               'VAE-encoded internally. Requires vae + latent. Ignored if '
-                               'reference_latent is given.'
-                }),
-                'vae': ('VAE',),
-                'latent': ('LATENT', {
-                    'tooltip': 'The generation/empty latent. The reference is matched to its EXACT '
-                               'grid (required so RF inversion does not error), and it is passed '
-                               'through to the "latent" output — wire that straight to the sampler.'
-                }),
-                'reference_latent': ('LATENT', {
-                    'tooltip': 'Pre-encoded reference. Takes precedence over reference_image+vae.'
-                }),
-                'ref_conditioning': ('CONDITIONING', {
-                    'tooltip': 'Pre-encoded reference conditioning. Overrides clip+prompt '
-                               '(use to plug into Klein/Krea Tools pipelines).'
+                'negative': ('CONDITIONING', {
+                    'tooltip': 'Passed straight through to the "negative" output. Connect the '
+                               'presampling node\'s negative so it does not have to fly around this '
+                               'node. If left empty, a neutral negative is derived from positive.'
                 }),
                 'strength_curve': ('FLOAT', {
                     'forceInput': True,
@@ -158,48 +159,26 @@ class UntwistingRoPEUniversal:
     def patch(
         self,
         model,
-        prompt: str,
+        positive,
+        latent: Dict[str, Any],
+        reference_image,
+        vae,
         structure_start: float,
         structure_end: float,
         style_start: float,
         style_end: float,
         schedule_curve: str = 'linear',
-        clip=None,
-        reference_image=None,
-        vae=None,
-        latent: Optional[Dict[str, Any]] = None,
-        reference_latent: Optional[Dict[str, Any]] = None,
-        ref_conditioning=None,
+        negative=None,
         strength_curve=None,
         extensions: Optional[Dict[str, Any]] = None,
     ):
         verbose = True  # always on — debug info goes to console and the `info` output
-        # ── Resolve the reference conditioning (encode the prompt internally) ─────
-        if ref_conditioning is None:
-            if clip is None:
-                raise RuntimeError(
-                    'UntwistingRoPEUniversal: connect a clip (the prompt is encoded internally) '
-                    'or pass ref_conditioning directly.'
-                )
-            ref_conditioning = _encode_text(clip, prompt)
+        # The target conditioning IS the reference conditioning, per the docs.
+        ref_conditioning = positive
 
-        # ── Resolve the reference latent (self-contained or pre-encoded) ──────────
-        # The reference must land on the generation latent's exact grid, so `latent` is required
-        # whenever we encode/resize the reference here.
-        if reference_latent is None:
-            if reference_image is None or vae is None:
-                raise RuntimeError(
-                    'UntwistingRoPEUniversal: provide either reference_latent, or reference_image + vae.'
-                )
-            if latent is None:
-                raise RuntimeError(
-                    'UntwistingRoPEUniversal: connect the generation latent (input "latent") so the '
-                    'reference can be matched to its grid.'
-                )
-            reference_latent = encode_reference_to_latent(reference_image, vae, latent)
-        elif latent is not None:
-            # Pre-encoded reference still must land on the generation grid.
-            reference_latent = match_latent_grid(reference_latent, latent)
+        # ── Encode the reference onto the generation latent's EXACT grid ──────────
+        # (mismatched grids make RF inversion error out)
+        reference_latent = encode_reference_to_latent(reference_image, vae, latent)
 
         # ── Pick the per-model profile ───────────────────────────────────────────
         model_info = model_adapters.build_model_info(model)
@@ -209,12 +188,14 @@ class UntwistingRoPEUniversal:
 
         # ── Advanced overrides come from the Advanced Options node (sentinel -> model default) ──
         ext = extensions if isinstance(extensions, dict) else {}
-        ov_beta = ext.get('override_beta', 0.0)
+        # looseness is a MULTIPLIER on the model's own beta — the absolute value differs ~50x
+        # between models, so an absolute widget would mean opposite things per model.
+        ov_beta_scale = ext.get('override_beta_scale', None)
         ov_blocks = ext.get('override_blocks', '')
         ov_adain = ext.get('override_adain_strength', None)
-        beta_eff = float(ov_beta) if float(ov_beta) > 0.0 else float(prof['beta'])
+        beta_eff = float(prof['beta']) * (float(ov_beta_scale) if ov_beta_scale is not None else 1.0)
         blocks_eff = ov_blocks.strip() if isinstance(ov_blocks, str) and ov_blocks.strip() else str(prof['blocks'])
-        adain_eff = float(ov_adain) if (ov_adain is not None and float(ov_adain) >= 0.0) else float(prof['adain_strength'])
+        adain_eff = float(ov_adain) if ov_adain is not None else float(prof['adain_strength'])
 
         # ── Step 1: build the RF inversion trajectory latent ─────────────────────
         model_rf, rf_latent = RFInversion().build(
@@ -276,9 +257,11 @@ class UntwistingRoPEUniversal:
 
         # Export the conditionings (the RF-inversion conditioning == the target/positive, per the
         # docs) and pass the latent through — the node feeds the sampler directly, presampling-style.
-        positive = ref_conditioning
-        negative = _zero_out(positive)
-        return (patched_model, positive, negative, latent, info)
+        out_positive = ref_conditioning
+        # A connected negative is passed through untouched — presampling packs build a real one and
+        # zeroing it out would throw their negative prompt away.
+        out_negative = negative if negative is not None else _zero_out(out_positive)
+        return (patched_model, out_positive, out_negative, latent, vae, info)
 
 
 NODE_CLASS_MAPPINGS = {
