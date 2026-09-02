@@ -1,58 +1,60 @@
-# DAIVID Untwisting RoPE (Universal)
+# Universal Untwisting RoPE
 
-Training-free style transfer for DiT models via **Untwisting RoPE** — frequency control for
-shared attention. This pack **unifies** three previously separate efforts into one repository
-with a single universal node (image models) plus a consolidated LTX-Video node:
+Training-free style transfer for DiT models via Untwisting RoPE, frequency control for shared
+attention. This pack unifies three previously separate efforts into one repository: a single
+universal node that auto-detects the loaded image model, plus a consolidated LTX-Video node.
+Clone into `ComfyUI/custom_nodes` and restart ComfyUI. No extra custom nodes required.
 
-- **Engine:** [BigStationW/ComfyUi-Untwisting-RoPE](https://github.com/BigStationW/ComfyUi-Untwisting-RoPE) (MIT) — the original technique and the per-model adapter system.
-- **Model adaptations:** David / ld2worksai-create — FLUX.2 Klein, KREA2, LTX-Video.
-- **Unification & universal-node redesign:** Nekodificador.
+- **Engine:** [BigStationW/ComfyUi-Untwisting-RoPE](https://github.com/BigStationW/ComfyUi-Untwisting-RoPE) (MIT), the original technique and the per-model adapter system.
+- **Model adaptations:** David / ld2worksai-create, FLUX.2 Klein, KREA2, LTX-Video.
+- **Unification and universal-node redesign:** Nekodificador.
 
 Paper: [Untwisting RoPE: Frequency Control for Shared Attention in DiTs](https://arxiv.org/abs/2602.05013) · https://untwisting-rope.github.io/
 
-## What changed vs the originals
+## Image models
 
-- **One repo, no external dependency.** KREA2 used to require BigStationW's pack installed
-  separately — now the engine is vendored, so everything works standalone.
-- **One universal node** for image models that auto-detects the model and dispatches to the right
-  adapter (no more one-node-per-model).
-- **Self-contained reference handling.** The node resizes the reference to the target resolution
-  and VAE-encodes it internally — no more auxiliary Scale-Image / VAEEncode / ReferenceLatent
-  nodes cluttering the graph.
-- **Presampling-shaped slots.** The input column mirrors a presampling node's output column
-  (`model` / `positive` / `negative` / `latent` / `reference_image` / `vae`), and `negative` +
-  `vae` pass straight through, so an NKD Klein/Krea Tools chain wires as short parallel cables
-  instead of cables flying over the node.
-- **Friendly controls** (`attenuation` / `semantic`) with per-model defaults; raw parameters
-  available via an optional extensions node.
-- **LTX consolidated** — the three LTX variants merged into one node with a mode selector.
+One node for every supported image model: Z-Image, Anima, Flux.1, Flux.2/Klein, Qwen-Image and
+KREA2. It auto-detects the model, runs RF inversion and the RoPE attention patch internally, and
+resizes + VAE-encodes the reference for you, so no auxiliary Scale-Image / VAEEncode /
+ReferenceLatent nodes clutter the graph. An optional second node adds fine-tuning knobs on top.
 
-## Supported models
+<!-- hero video goes here -->
 
-| Family | Node | Source |
-|---|---|---|
-| Z-Image / Z-Image Turbo | Universal | engine |
-| Anima | Universal | engine |
-| Flux.2 family (incl. FLUX.2 Klein) | Universal | engine + David |
-| Flux.1 family (Flux / Schnell / Inpaint; incl. **FLUX.1-Depth-dev**) | Universal | Nekodificador |
-| Qwen-Image / Edit family | Universal | engine |
-| KREA2 | Universal | David |
-| LTX-Video | LTX node | David |
+| Node | What it does |
+|---|---|
+| [Universal Untwisting RoPE](docs/universal.md) | Auto-detects the model and runs training-free style transfer from a reference image. |
+| [Universal Untwisting RoPE (Advanced Options)](docs/universal.md) | Optional fine-tuning knobs for the main node: color/texture transfer, bleeding fix, style adherence, looseness, tone match. |
 
-## Installation
+## LTX-Video
 
-Clone into `ComfyUI/custom_nodes` and restart ComfyUI. No extra custom nodes required.
+Untwisting RoPE ported to LTX-Video, consolidating David's three separate LTX packs (Basic,
+D-Structure, LTX-zip) into one node with a mode selector. Not yet validated end-to-end here, see
+the node page before relying on it for production work.
 
-## Notes for collaborators
+<!-- hero video goes here -->
 
-- **LTX-Video node is not yet tested.** It consolidates David's three LTX packs (Basic /
-  D-Structure / LTX-zip) into one node (`reference_mode` per_step/single_pass + `structure_strength`
-  for token injection, shared code in `nodes/ltx_helpers.py`). The merge is faithful to David's
-  tested behavior but has not been run end-to-end here — **validate and tune on real LTX-Video**.
-  Its params keep David's original names/mappings (`attenuation`/`semantic` as suppression), which
-  differ from the image node's `structure`/`style` (direct scales) — reconcile if desired.
+| Node | What it does |
+|---|---|
+| [Universal Untwisting RoPE (LTX-Video)](docs/ltx.md) | Style transfer for LTX-Video via spatial RoPE scaling, optional token injection, and AdaIN tone matching. |
 
 ## Credits
 
-This is a derivative work. The core algorithm and adapter architecture are © BigStationW (MIT);
-model adaptations © David (ld2worksai-create); unification © Nekodificador. See `LICENSE`.
+This is a derivative work.
+
+- **Core algorithm and per-model adapter architecture:** © BigStationW, MIT licensed. Vendored
+  into this repo so KREA2 no longer needs the original pack installed separately.
+- **Model adaptations (FLUX.2 Klein, KREA2, LTX-Video):** © David / ld2worksai-create.
+- **Flux.1 family adapter:** Nekodificador.
+- **Unification, universal node, and this repository:** Nekodificador.
+
+Techniques implemented here, beyond the base paper: RF-Solver / RF-Edit
+([arXiv:2411.04746](https://arxiv.org/abs/2411.04746)), FireFlow
+([arXiv:2412.07517](https://arxiv.org/abs/2412.07517)), FlowTurbo
+([arXiv:2409.18128](https://arxiv.org/abs/2409.18128)), PMI
+([arXiv:2602.11850](https://arxiv.org/abs/2602.11850)), OTIP
+([arXiv:2508.02363](https://arxiv.org/abs/2508.02363)), AdaIN
+([arXiv:1703.06868](https://arxiv.org/abs/1703.06868)), the ConsiStory feature-injection idea
+([arXiv:2402.03286](https://arxiv.org/abs/2402.03286)), and CACTIF's similarity-filtered attention
+([arXiv:2505.16360](https://arxiv.org/abs/2505.16360)).
+
+See `LICENSE` for the full license text.
