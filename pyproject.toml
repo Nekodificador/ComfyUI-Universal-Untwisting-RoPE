@@ -1,6 +1,6 @@
 [project]
 name = "comfyui-universal-untwisting-rope"
-description = "Universal Untwisting RoPE — training-free style transfer for DiT models (image + LTX video), unified."
+description = "Universal Untwisting RoPE — training-free style transfer for DiT image models, unified."
 version = "3.0.0"
 license = { file = "LICENSE" }
 requires-python = ">=3.10"

@@ -39,8 +39,6 @@ KOALA_1B
 KOALA_700M
 LongCatImage
 LotusD
-LTXAV
-LTXV
 Lumina2
 Omnigen2
 PiD
