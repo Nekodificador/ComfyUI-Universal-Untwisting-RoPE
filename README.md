@@ -1,12 +1,12 @@
 # Universal Untwisting RoPE
 
 Training-free style transfer for DiT models via Untwisting RoPE, frequency control for shared
-attention. This pack unifies three previously separate efforts into one repository: a single
-universal node that auto-detects the loaded image model, plus a consolidated LTX-Video node.
+attention. This pack unifies three previously separate efforts into one repository around a
+single universal node that auto-detects the loaded image model.
 Clone into `ComfyUI/custom_nodes` and restart ComfyUI. No extra custom nodes required.
 
 - **Engine:** [BigStationW/ComfyUi-Untwisting-RoPE](https://github.com/BigStationW/ComfyUi-Untwisting-RoPE) (MIT), the original technique and the per-model adapter system.
-- **Model adaptations:** David / ld2worksai-create, FLUX.2 Klein, KREA2, LTX-Video.
+- **Model adaptations:** David / ld2worksai-create, FLUX.2 Klein, KREA2.
 - **Unification and universal-node redesign:** Nekodificador.
 
 Paper: [Untwisting RoPE: Frequency Control for Shared Attention in DiTs](https://arxiv.org/abs/2602.05013) · https://untwisting-rope.github.io/
@@ -34,25 +34,13 @@ ReferenceLatent nodes clutter the graph. An optional second node adds fine-tunin
 <img width="1660" height="819" alt="image" src="https://github.com/user-attachments/assets/15ee44b9-b9a2-47ba-9914-f2ef97a75b03" />
 >> Workflow included in 📂example_workflows, so you can call it from the ComfyUI Templates menu
 
-## LTX-Video
-
-Untwisting RoPE ported to LTX-Video, consolidating David's three separate LTX packs (Basic,
-D-Structure, LTX-zip) into one node with a mode selector. Not yet validated end-to-end here, see
-the node page before relying on it for production work.
-
-<!-- hero video goes here -->
-
-| Node | What it does |
-|---|---|
-| [Universal Untwisting RoPE (LTX-Video)](docs/ltx.md) | Style transfer for LTX-Video via spatial RoPE scaling, optional token injection, and AdaIN tone matching. |
-
 ## Credits
 
 This is a derivative work.
 
 - **Core algorithm and per-model adapter architecture:** © BigStationW, MIT licensed. Vendored
   into this repo so KREA2 no longer needs the original pack installed separately.
-- **Model adaptations (FLUX.2 Klein, KREA2, LTX-Video):** © David / ld2worksai-create.
+- **Model adaptations (FLUX.2 Klein, KREA2):** © David / ld2worksai-create.
 - **Flux.1 family adapter:** Nekodificador.
 - **Unification, universal node, and this repository:** Nekodificador.
 
