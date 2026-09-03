@@ -18,12 +18,20 @@ KREA2. It auto-detects the model, runs RF inversion and the RoPE attention patch
 resizes + VAE-encodes the reference for you, so no auxiliary Scale-Image / VAEEncode /
 ReferenceLatent nodes clutter the graph. An optional second node adds fine-tuning knobs on top.
 
-<!-- hero video goes here -->
-
 | Node | What it does |
 |---|---|
 | [Universal Untwisting RoPE](docs/universal.md) | Auto-detects the model and runs training-free style transfer from a reference image. |
 | [Universal Untwisting RoPE (Advanced Options)](docs/universal.md) | Optional fine-tuning knobs for the main node: color/texture transfer, bleeding fix, style adherence, looseness, tone match. |
+
+
+## Examples
+### Krea2
+<img width="1638" height="819" alt="image" src="https://github.com/user-attachments/assets/d04aa1a8-6aa2-4d35-93d6-ba94dc629d7f" />
+> Workflow included in 📂examples_workflows, so you can call it from the ComfyUI Templates menu
+
+### Flux Klein
+<img width="1660" height="819" alt="image" src="https://github.com/user-attachments/assets/15ee44b9-b9a2-47ba-9914-f2ef97a75b03" />
+>> Workflow included in 📂examples_workflows, so you can call it from the ComfyUI Templates menu
 
 ## LTX-Video
 
